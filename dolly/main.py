@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import re, sys, os, time
+import argparse, sys
 import json
 import shutil
 import glob
@@ -31,7 +32,7 @@ def __image_loader(filename_or_np_array):
     return image, _type
 
 
-def crop_image(filename_or_np_array, coords, save_path=None):
+def crop_image(filename_or_np_array, coords, save_path=None, **kwargs):
     # Load image (np_array)
     image, _type = __image_loader(filename_or_np_array)
 
@@ -49,7 +50,7 @@ def crop_image(filename_or_np_array, coords, save_path=None):
     return pil_image
 
 
-def findfaces(filename_or_np_array, save_path=False, verbose=1):
+def findfaces(filename_or_np_array, save_path=False, verbose=1, **kwargs):
     # Load image (np_array)
     image, _type = __image_loader(filename_or_np_array)
 
@@ -81,7 +82,7 @@ def findfaces(filename_or_np_array, save_path=False, verbose=1):
     return face_locations
 
 
-def findfacesdir(directory, save_path, max_faces=False):
+def findfacesdir(directory, save_path, max_faces=0, **kwargs):
     print('Reading directory...')
     num_faces = 0
     for filename in images_in_path(directory):
@@ -100,7 +101,7 @@ def findfacesdir(directory, save_path, max_faces=False):
     return num_faces
 
 
-def findclones(filename_or_np_array, top_k=10, database=None):
+def findclones(filename_or_np_array, top_k=10, database=None, **kwargs):
     # Load image (np_array)
     image, _type = __image_loader(filename_or_np_array)
 
@@ -143,7 +144,7 @@ def findclones(filename_or_np_array, top_k=10, database=None):
         return top_candidates
 
 
-def draw_boxes(filename_or_np_array, save_path=None, select_all=True, highlight=1):
+def draw_boxes(filename_or_np_array, save_path=None, **kwargs):
     # Load image (np_array)
     image, _type = __image_loader(filename_or_np_array)
 
@@ -177,7 +178,7 @@ def draw_boxes(filename_or_np_array, save_path=None, select_all=True, highlight=
     return image, face_locations
 
 
-def draw_landmarks(filename_or_np_array, save_path=None):
+def draw_landmarks(filename_or_np_array, save_path=None, **kwargs):
     facial_features = [
         'chin',
         'left_eyebrow',
@@ -223,44 +224,46 @@ def draw_landmarks(filename_or_np_array, save_path=None):
 def main():
     try:
         arg1 = str(sys.argv[1])
-        if arg1 == 'vector':
-            print('vector filename1')
-        elif arg1 == 'matrix':
-            print('matrix dir')
-        elif arg1 == 'findclones':
-            findclones(str(sys.argv[2]))
 
-        elif arg1 == 'findfaces':
-            if len(sys.argv) == 3:
-                findfaces(str(sys.argv[2]), save_path=False)
-            elif len(sys.argv) == 4:
-                findfaces(str(sys.argv[2]), save_path=str(sys.argv[3]))
-            else:
-                raise IndexError
+        parser = argparse.ArgumentParser(description='Find all faces in an image')
+        parser.add_argument('command', help='Action to take')  # Ignore
+        # Select command
+        if arg1 == 'findfaces':
+            parser.add_argument('-f', '--filename', help='filename of the image to process',
+                                dest='filename_or_np_array', required='True')
+            parser.add_argument('-d', '--save_path', help='directory to save the faces found')
+            func = findfaces
+
         elif arg1 == 'findfacesdir':
-            if len(sys.argv) == 4:
-                findfacesdir(str(sys.argv[2]), save_path=str(sys.argv[3]))
-            elif len(sys.argv) == 5:
-                findfacesdir(str(sys.argv[2]), save_path=str(sys.argv[3]), max_faces=int(sys.argv[4]))
-            else:
-                raise IndexError
-        elif arg1 == 'drawboxes':
-            if len(sys.argv) == 3:
-                draw_boxes(str(sys.argv[2]))
-            elif len(sys.argv) == 4:
-                draw_boxes(str(sys.argv[2]), save_path=str(sys.argv[3]))
+            parser.add_argument('-d', '--directory', help='directory to search for faces', required='True')
+            parser.add_argument('-d2', '--save_path', help='directory to save the faces found', required='True')
+            parser.add_argument('-m', '--max_faces', help='maximum number of faces to save', type=int, default=0)
+            func = findfacesdir
+
+        elif arg1 == 'draw_boxes':
+            parser.add_argument('-f', '--filename', help='filename of the image to process',
+                                dest='filename_or_np_array', required='True')
+            parser.add_argument('-s', '--save_path', help='directory to save the faces found')
+            func = draw_boxes
+
+        elif arg1 == 'draw_landmarks':
+            parser.add_argument('-f', '--filename', help='filename of the image to process',
+                                dest='filename_or_np_array', required='True')
+            parser.add_argument('-s', '--save_path', help='directory to save the faces found')
+            func = draw_landmarks
 
         else:
-            raise IndexError
+            raise SyntaxError
 
-    except IndexError as e:
-        print('vector\tFor a given image, return its vector\n'
-              'matrix\tFor a given directory, return a dictionary with the vectors of each image\n'
-              'findfaces filename (save_path)\tFind faces in a image. Option to save them.\n'
-              'findfacesdir filename save_path\tFinf faces in a directory and save them in another. Option to limit the maximun number of faces\n'
-              '-h\t\tTo list all available options')
+        # Call function
+        results = vars(parser.parse_args())
+        func(**results)
+
+    except (SyntaxError, IndexError) as e:
+        print('Unknown command')
+        print('Available commands: [findfaces, findfacesdir, draw_boxes, draw_landmarks]')
 
 
 if __name__ == '__main__':
-    draw_landmarks('/Users/salvacarrion/Desktop/Unknown.jpeg')
-    #main()
+    #draw_landmarks('/Users/salvacarrion/Desktop/Unknown.jpeg')
+    main()
