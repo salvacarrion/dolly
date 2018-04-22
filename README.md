@@ -102,14 +102,14 @@ I've created a simple `sqlite` database using a few thousand images from
 A script like this:
 
     ```
-   #!/usr/bin/env python3
+    #!/usr/bin/env python3
 
     from dolly import *
 
     findclones('./some_face.jpg', top_k=10, database='data/faces_small.sqlite)
     ```
 
-should return the top 10 most similar images found in your database:
+...should return the top 10 most similar images found in your database. And with a simple visualization it looks pretty cool.
 
 ```
 Connecting to DB...
