@@ -1,7 +1,6 @@
 # Dolly
-Dolly is a simple program to find faces in a image or in a directory,
-crop them, draw boxes, landmarks,... Then there are some funny functions to
-find your doubles!
+Dolly is a simple face detection and recognition library to find your clones!
+Additionally, you can use it to detect faces in images or folders, crop them, draw boxes, landmarks,...
 
 This project is based on [dlib](http://dlib.net) and [face_recognition](https://github.com/ageitgey/face_recognition)
 

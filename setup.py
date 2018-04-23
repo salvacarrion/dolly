@@ -1,19 +1,37 @@
+# -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
+
+NAME = 'Dolly'
+VERSION = '0.1'
+DESCRIPTION = 'Dolly is a simple face detection to find your clones!'
+AUTHOR = 'Salva Carrión'
+AUTHOR_EMAIL = ''
+LICENCE = 'MIT'
+URL = "https://github.com/salvacarrion/dolly"
+DOWNLOAD_URL = "https://github.com/salvacarrion/dolly/tarball/{}".format(VERSION)
+
+ENTRY_POINTS = {
+    'console_scripts': (
+        'dolly = dolly:main',
+    ),
+}
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
-setup(name='dolly',
-      version='0.0.1',
-      description='Dolly is a simple program to find your doubles',
-      url='https://github.com/salvacarrion/dolly',
-      author='Salva Carrión',
-      license='MIT',
+setup(name=NAME,
+      version=VERSION,
+      description=DESCRIPTION,
+      url=URL,
+      author=AUTHOR,
+      author_email=AUTHOR_EMAIL,
+      license=LICENCE,
+      packages=find_packages(),
+      package_data={
+          'dictionaries': ['*.sqlite', '*.jpg', '*.png'],
+      },
+      include_package_data=True,
       install_requires=requirements,
       zip_safe=False,
-      entry_points={
-          'console_scripts': [
-              'dolly = dolly:main'
-          ]
-      },
+      entry_points=ENTRY_POINTS
       )

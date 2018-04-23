@@ -67,7 +67,7 @@ class TestDolly(unittest.TestCase):
 
 if __name__ == '__main__':
     # Test all
-    #unittest.main()
+    # unittest.main()
 
     # # Test single test
     # suite = unittest.TestSuite()

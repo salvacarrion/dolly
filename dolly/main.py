@@ -32,7 +32,7 @@ def __image_loader(filename_or_np_array):
     return image, _type
 
 
-def crop_image(filename_or_np_array, coords, save_path=None, **kwargs):
+def crop_image(filename_or_np_array, coords, save_path=None, console=True, **kwargs):
     # Load image (np_array)
     image, _type = __image_loader(filename_or_np_array)
 
@@ -44,7 +44,7 @@ def crop_image(filename_or_np_array, coords, save_path=None, **kwargs):
     # Save image
     if save_path:
         pil_image.save(save_path, 'JPEG', quality=100)
-    else:  # Display the resulting image
+    elif console:  # Display the resulting image
         pil_image.show()
 
     return pil_image
@@ -144,7 +144,7 @@ def findclones(filename_or_np_array, top_k=10, database=None, **kwargs):
         return top_candidates
 
 
-def draw_boxes(filename_or_np_array, save_path=None, **kwargs):
+def draw_boxes(filename_or_np_array, save_path=None, console=True, **kwargs):
     # Load image (np_array)
     image, _type = __image_loader(filename_or_np_array)
 
@@ -172,13 +172,13 @@ def draw_boxes(filename_or_np_array, save_path=None, **kwargs):
     # Save image
     if save_path:
         pil_image.save(save_path, 'JPEG', quality=100)
-    else:  # Display the resulting image
+    elif console:  # Display the resulting image
         pil_image.show()
 
     return image, face_locations
 
 
-def draw_landmarks(filename_or_np_array, save_path=None, **kwargs):
+def draw_landmarks(filename_or_np_array, save_path=None, console=True, **kwargs):
     facial_features = [
         'chin',
         'left_eyebrow',
@@ -215,7 +215,7 @@ def draw_landmarks(filename_or_np_array, save_path=None, **kwargs):
     # Save image
     if save_path:
         pil_image.save(save_path, 'JPEG', quality=100)
-    else:  # Display the resulting image
+    elif console:  # Display the resulting image
         pil_image.show()
 
     return image, face_landmarks
