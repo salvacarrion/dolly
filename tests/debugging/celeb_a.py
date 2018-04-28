@@ -1,20 +1,14 @@
-import os
-import json
-import shutil
-import glob
-import time
-
-import face_recognition
-from PIL import Image
-
-from dolly.db import *
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 from dolly.main import *
 from dolly.utils import *
 
+
 DIRNAME = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+csv.field_size_limit(sys.maxsize)
 
 
-def fill_db():
+def _fill_db():
     # Big DBs
     #database = os.path.join(DIRNAME, 'data/faces.sqlite')
     #faces_dir = '/Users/salvacarrion/Documents/Programming/Data/faces/original'
@@ -88,6 +82,6 @@ def fill_db():
 
 if __name__ == '__main__':
     start_t = time.time()
-    #fill_db()
+    _fill_db()
     end_t = time.time() - start_t
     print('- Elapsed time: %.5fs' % end_t)

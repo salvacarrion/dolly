@@ -12,6 +12,7 @@ import uuid
 import face_recognition
 import numpy as np
 from PIL import Image, ImageDraw
+from googleapiclient.discovery import build
 
 from dolly.db import *
 from dolly.utils import *
@@ -111,19 +112,19 @@ def findclones(filename_or_np_array, top_k=10, database=None, **kwargs):
     # Check database source
     if not database:
         DIRNAME = os.path.dirname(os.path.dirname(__file__))
-        database = os.path.join(DIRNAME, 'data/faces.sqlite')
+        database = os.path.join(DIRNAME, 'data/msceleb.sqlite')
 
     # Create a database connection
     print('Connecting to DB...')
     conn = create_connection(database)
     with conn:
         cur = conn.cursor()
-        cur.execute('SELECT * from faces;')
+        cur.execute('SELECT * from faces WHERE face_encoding IS NOT NULL;')
 
         top_candidates = []  # Max. size 10
         for row in cur:  # Iterator. Doesn't load the whole table
             # Compute distance
-            dist = face_recognition.face_distance([convert_array(row[4])], image_encodings[0])[0]
+            dist = face_recognition.face_distance([convert_array(row[5])], image_encodings[0])[0]
             t = (dist, row)
 
             # Add to list
@@ -138,8 +139,10 @@ def findclones(filename_or_np_array, top_k=10, database=None, **kwargs):
         # Print images
         for c in top_candidates:  # Sorted
             dist, row = c
-            values = (dist, row[6])
-            print('Distance={}; original={}'.format(*values))
+            image_name = row[1] + '_' + str(row[6])
+            entity_name = row[4]
+            values = (entity_name, dist, image_name)
+            print('Name: {};     Distance={};     image_name={}'.format(*values))
 
         return top_candidates
 
@@ -219,6 +222,23 @@ def draw_landmarks(filename_or_np_array, save_path=None, console=True, **kwargs)
         pil_image.show()
 
     return image, face_landmarks
+
+
+def get_more_info(freebase_mid, api_key):
+    gkg_entity_id = '/' + freebase_mid.replace('.', '/')
+
+    # Build a service object for interacting with the API. Visit
+    # the Google APIs Console <http://code.google.com/apis/console>
+    # to get an API key for your own application.
+    # Services: https://developers.google.com/api-client-library/python/apis/
+    # GKG API: https://developers.google.com/knowledge-graph/reference/rest/v1/
+    # More: https://developers.google.com/resources/api-libraries/documentation/kgsearch/v1/python/latest/kgsearch_v1.entities.html
+    service = build('kgsearch', 'v1', developerKey=api_key)
+    return service.entities().search(
+        ids=gkg_entity_id,
+        languages='en',
+        limit=1,
+    ).execute()
 
 
 def main():

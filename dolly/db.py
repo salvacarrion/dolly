@@ -5,6 +5,9 @@ import sqlite3
 from sqlite3 import Error
 import numpy as np
 import io
+import csv
+
+from dolly.utils import *
 
 
 def create_connection(db_file):
@@ -17,9 +20,33 @@ def create_connection(db_file):
     return None
 
 
-def add_face(conn):
+def load_into_db(filename, database, sql, parser, csvkargs, buffer=10000, **kwargs):
+    data = []
+
+    commit_flag = False
+
+    # Create a database connection
+    conn = create_connection(database)
     cur = conn.cursor()
-    cur.execute("SELECT * FROM tasks")
+    with conn:
+        with open(filename) as csvfile:
+            reader = csv.reader(csvfile, **csvkargs)
+
+            for counter, (is_last, row) in enumerate(isLast(reader)):
+                values = parser(row, **kwargs)
+                if values:
+                    data.append(values)
+                    commit_flag = True if (counter + 1) % buffer == 0 else False
+
+                # Force commit (To make sure the commit is done at this point)
+                if commit_flag or is_last:
+                    cur.executemany(sql, data)
+                    conn.commit()
+                    data = []  # Reset data
+                    commit_flag = False
+                    print("- Commit #{}\t(total: {})".format(int((counter + 1) / buffer), counter + 1))
+                    if is_last:
+                        print('Finished!')
 
 
 def adapt_array(arr):
