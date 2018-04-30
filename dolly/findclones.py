@@ -26,7 +26,7 @@ DIRNAME = os.path.dirname(os.path.dirname(__file__))
 
 class Finder:
 
-    def __init__(self, db_conn=None, in_memory=True, version='v1'):
+    def __init__(self, db_conn, in_memory=True, data_path=None):
         # vars
         self.conn = db_conn
         self.in_memory = in_memory
@@ -34,15 +34,9 @@ class Finder:
                      'entity_from_faceid': 'SELECT * from entities WHERE freebase_mid=(SELECT freebase_mid from faces WHERE id=?);'
                      }
 
-        # Create a database connection
-        if not db_conn:
-            print('Connecting to DB...')
-            db_path = os.path.join(DIRNAME, 'data/production/msceleb/{}/db/msceleb.sqlite'.format(version))
-            self.conn = create_connection(db_path)
-
         # Build index in memory
         if in_memory:
-            pickle_path = os.path.join(DIRNAME, 'data/production/msceleb/{}/pickle/'.format(version))
+            pickle_path = os.path.join(os.path.normpath(data_path), 'pickle/')
 
             # Load vectors and build index
             self.np_ids = pickle.load(open(pickle_path + 'np_ids.pkl', 'rb'))
@@ -50,24 +44,11 @@ class Finder:
             self.index.addDataPointBatch(pickle.load(open(pickle_path + 'np_encodings.pkl', 'rb')))
             self.index.createIndex()
 
-    def analyze_face(self, filename_or_np_array, model='hog'):
-        # Load image (np_array)
-        image, _type = image_loader(filename_or_np_array)
-
-        # Find all facial features
-        face_locations = face_recognition.face_locations(image, model=model)
-        if len(face_locations):
-            face_location = face_locations[0]
-            face_landmarks = face_recognition.face_landmarks(image, [face_location])[0]
-            face_encoding = face_recognition.face_encodings(image, [face_location])[0]
-            return face_location, face_landmarks, face_encoding
-        return None, None, None
-
-    def findclones(self, face_encoding, top_k=10, print_results=False):
+    def findclones(self, face_encoding, top_k=10):
         if self.in_memory:
-            func = self._fc_memory
+            func = self.__fc_memory
         else:
-            func = self._fc_db
+            func = self.__fc_db
         return func(face_encoding, top_k, )
 
     def enhance_results(self, top_candidates):
@@ -95,13 +76,13 @@ class Finder:
             cur = self.conn.cursor()
             return cur.execute(*args, **kwargs)
 
-    def _fc_memory(self, face_encoding, top_k, **kwargs):
+    def __fc_memory(self, face_encoding, top_k, **kwargs):
         ids, distances = self.index.knnQuery(face_encoding, k=top_k)
         ids_db = self.np_ids[ids]
         top_candidates = [(float(distances[i]), int(ids_db[i])) for i in range(0, len(ids))]
         return self.enhance_results(top_candidates)
 
-    def _fc_db(self, face_encoding, top_k=10, **kwargs):
+    def __fc_db(self, face_encoding, top_k=10, **kwargs):
         with self.conn:
             cur = self.conn.cursor()
             cur.execute(self.SQLs['faces_with_encodings'])

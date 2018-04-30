@@ -12,30 +12,26 @@ from PIL import Image
 
 
 def image_loader(filename_or_np_array):
-    # Read filename or load np_array
+    # Input as a filename
     if isinstance(filename_or_np_array, str):
-        # Load the image file into a numpy array
-        return load_image_file(filename_or_np_array), str
+        return load_image_file(filename_or_np_array)
+    # Input as a Numpy ndarray
     elif isinstance(filename_or_np_array, np.ndarray):
-        return filename_or_np_array, np.ndarray
+        return filename_or_np_array
+    # Error
     else:
         raise TypeError('Invalid image type')
 
 
-def crop_image(filename_or_np_array, coords, save_path=None, console=True, **kwargs):
-    # Load image (np_array)
-    image, _type = image_loader(filename_or_np_array)
-
+def crop_image(np_image, coords, save_path=None):
     # Load PIL image and crop it
     (top, right, bottom, left) = coords
-    pil_image = Image.fromarray(image)
+    pil_image = Image.fromarray(np_image)
     pil_image = pil_image.crop((left, top, right, bottom))
 
     # Save image
     if save_path:
         pil_image.save(save_path, 'JPEG', quality=100)
-    elif console:  # Display the resulting image
-        pil_image.show()
 
     return pil_image
 
@@ -67,6 +63,7 @@ def decode_str(text):
 def decode_b64_image(str_img):
     data = base64.b64decode(str_img)
     return Image.open(io.BytesIO(data))
+
 
 def isLast(itr):
   old = next(itr)

@@ -1,6 +1,6 @@
 # Dolly
-Dolly is a simple face detection and recognition library to find your clones!
-Additionally, you can use it to detect faces in images or folders, crop them, draw boxes, landmarks,...
+Dolly is a simple library to find your clones!
+Additionally, you can use it to detect faces, crop them, draw boxes, landmarks,...
 
 This project is based on [dlib](http://dlib.net) and [face_recognition](https://github.com/ageitgey/face_recognition)
 
@@ -24,23 +24,32 @@ pip3 install ./dolly
 
 ## Usage
 
-### Command-Line Interface
+### From the command line
 
-I like to create an alias in `.bash_profile/.bashrc` to access easily.
+#### `findclones` command line tool
 
-    alias dolly="python3 /.../Projects/dolly/dolly/main.py"
+Find your clone, returns the top K most similar faces in our database
+```
+usage: dolly [-h] -f FILENAME [-k TOP_K] [--in_memory IN_MEMORY] [--model MODEL] command
+
+
+$ dolly findclones -f ./obama.jpg -k 3 --in_memory True --model 'hog'
+    #1. Barack Obama;	EntityID: m.02mjmr;	Distance: 0.031694889068603516;
+    #2. David Trezeguet;	EntityID: m.02wxpm;	Distance: 0.07425856590270996;
+    #3. Sanjeev Kapoor;	EntityID: m.07vynh;	Distance: 0.07822000980377197;
+```
 
 
 #### `findfaces` command line tool
 Find faces in an image, and optionally, they can be cropped and saved in a directory.
 
-    ```
-    usage: main.py [-h] -f FILENAME_OR_NP_ARRAY [-d SAVE_PATH] command
+```
+usage: dolly [-h] -f NP_IMAGE [-d SAVE_PATH] command
 
 
-    $ dolly vector -f ./obama.jpg
-    - Face 1: (top=44, right=187, bottom=152, left=79) - 108x108px
-    ```
+$ dolly findfaces -f ./obama.jpg
+    - Face #1: (top=44, right=187, bottom=152, left=79) - 108x108px
+```
 
 ![](https://github.com/salvacarrion/dolly/raw/master/docs/images/findfaces.png)
 
@@ -48,80 +57,115 @@ Find faces in an image, and optionally, they can be cropped and saved in a direc
 #### `findfacesdir` command line tool
 Find faces in all the images of a directory, then, the faces are cropped and saved into another directory.
 
-    ```
-    usage: main.py [-h] -d DIRECTORY -d2 SAVE_PATH [-m MAX_FACES] command
+```
+usage: dolly [-h] -d DIRECTORY -d2 SAVE_PATH [-m MAX_FACES] command
 
 
-    $dolly findfacesdir -d ./original -d2 ./cropped
-    Reading directory...
-
-    Finding faces (1) in: obama_and_biden.jpg
-    - Face 1: (top=449, right=923, bottom=634, left=737) - 186x185px
-    - Face 2: (top=390, right=1356, bottom=613, left=1133) - 223x223px
-    - Face 3: (top=1062, right=1749, bottom=1216, left=1594) - 155x154px
-
-    Finding faces (4) in: obama.jpg
-    - Face 1: (top=44, right=187, bottom=152, left=79) - 108x108px
-    ```
+$ dolly findfacesdir -d original/ -d2 cropped/
+    Finding faces (1) in: obama.jpg
+        - Face #1: (top=44, right=187, bottom=152, left=79) - 108x108px
+    Finding faces (2) in: two_people.jpg
+        - Face #1: (top=57, right=964, bottom=242, left=778) - 186x185px
+        - Face #2: (top=47, right=408, bottom=202, left=253) - 155x155px
+    Finished.
+    A total of 3 images were added
+```
 
 
-#### `draw_boxes` command line tool
+#### `drawboxes` command line tool
 
 Draw a rectangle on the face
 
-    ```
-    usage: main.py [-h] -f FILENAME_OR_NP_ARRAY [-s SAVE_PATH] command
+```
+usage: dolly [-h] -f FILENAME -s SAVE_PATH command
 
-    $dolly draw_boxes -f obama.jpg
-    ```
+$ dolly drawboxes -f ./obama.jpg -s ./obama_boxes.jpg
+```
 
 ![](https://github.com/salvacarrion/dolly/raw/master/docs/images/rectangle.jpg)
 
 
-#### `draw_landmarks` command line tool
+#### `drawlandmarks` command line tool
 
 Draw the set of landmarks on the face
 
-    ```
-    usage: main.py [-h] -f FILENAME_OR_NP_ARRAY [-s SAVE_PATH] command
+```
+usage: dolly [-h] -f FILENAME -s SAVE_PATH command
 
-    $dolly draw_landmarks -f obama.jpg
-    ```
+$ dolly drawlandmarks -f ./obama.jpg -s ./obama_landmarks.jpg
+```
 
 ![](https://github.com/salvacarrion/dolly/raw/master/docs/images/landmarks.jpg)
 
+### Python scripting
 
-## Funny stuff
-
-### Find your clone!
-
-I've created a simple `sqlite` database using a few thousand images from
-[CelebA](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) to play a bit.
-
-A script like this:
-
-    ```
-    #!/usr/bin/env python3
-
-    from dolly import *
-
-    findclones('./some_face.jpg', top_k=10, database='data/faces_small.sqlite)
-    ```
-
-...should return the top 10 most similar images found in your database. And with a simple visualization it looks pretty cool.
+#### Find your clones
 
 ```
-Connecting to DB...
-Distance=0.40746634721648173; original=107167.jpg
-Distance=0.4889576149502122; original=020690.jpg
-Distance=0.5589136585105391; original=055150.jpg
-Distance=0.5598040234357228; original=076761.jpg
-Distance=0.5804593914355708; original=016137.jpg
-Distance=0.5837395193877429; original=008446.jpg
-Distance=0.5873013908017849; original=034369.jpg
-Distance=0.5974321872132632; original=010395.jpg
-Distance=0.6012312733115952; original=089172.jpg
-Distance=0.6048747076109878; original=075257.jpg
+from dolly.findclones import Finder
+from dolly.db import create_connection
+
+# Set working directory and database (example)
+BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data/production/{}/{}/'.format(dataset, version))
+database = os.path.join(BASE_DIR, 'db/msceleb.sqlite')
+
+# Instanciate Finder
+f = Finder(db_conn=create_connection(database), data_path=BASE_DIR)
+
+# Get face attributes (f_enc = face encodings)
+f_loc, f_lmarks, f_enc = analyze_face(np_image=np_image, model=model)
+
+# Find (top 3) clones and print results
+res = f.findclones(face_encoding=f_enc, top_k=3)
+f.print_results(res)
+
+>>>
+#1. Barack Obama;	EntityID: m.02mjmr;	Distance: 0.031694889068603516;
+#2. David Trezeguet;	EntityID: m.02wxpm;	Distance: 0.07425856590270996;
+#3. Sanjeev Kapoor;	EntityID: m.07vynh;	Distance: 0.07822000980377197;
 ```
 
-*(I'll try to upload an online demo)*
+#### Draw face boxes
+
+```
+from dolly.processing import draw_boxes
+from dolly.utils import image_loader
+
+filename = './original/obama.jpg'
+save_path = './cropped/obama_boxes.jpg'
+
+# Draw boxes and save it
+res = draw_boxes(np_image=image_loader(filename), save_path=save_path)
+```
+
+#### More
+
+For more examples, check the tests files.
+
+### Working directory
+
+Default datasets are located `dolly/data/`, but you can have yours wherever you want. The only requirement is that
+all datasets should follow the same structure: `./{name}/{version}/{db/ + images/ + pickle/}`
+
+```
+dolly
+  |
+  |-- data
+        |--production
+                |-- {name} (e.g: msceleb)
+                       |-- {version} (e.g.: v1)
+                                |-- db/
+                                |-- images/
+                                |-- pickle/
+```
+
+- Inside `db/` we can find a *sqlite* database which contains two relevant tables: `entities` and `faces`:
+    - **Entities**: Contains information about the unique persons in the DB.
+    ![Entities table](https://github.com/salvacarrion/dolly/raw/master/docs/images/entities_table.png)
+
+    - **Faces**: Contains information about each face in the database
+    ![Faces table](https://github.com/salvacarrion/dolly/raw/master/docs/images/faces_table.png)
+
+- Then, in `pickle/` we can find two pickle files (`np_encodings.pkl` and `np_ids.pkl`) that store the numpy ndarray of encodings and faces IDs in the DB.
+- Finally, we have `images/`, where all the faces of each person are saved inside its folder (identify by its `freebase_mid`)
+

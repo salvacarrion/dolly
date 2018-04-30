@@ -2,22 +2,19 @@
 # -*- coding: utf-8 -*-
 
 import sqlite3
-from sqlite3 import Error
-import numpy as np
-import io
 import csv
 
 from dolly.utils import *
 
 
-def create_connection(db_file):
-    try:
-        conn = sqlite3.connect(db_file)
-        return conn
-    except Error as e:
-        print(e)
-
-    return None
+def create_connection(db_file, db_type='sqlite3'):
+    if db_type == 'sqlite3':
+        try:
+            return sqlite3.connect(db_file)
+        except sqlite3.Error as e:
+            print(e)
+    else:
+        raise NotImplementedError('Database unknown')
 
 
 def load_into_db(filename, database, sql, parser, csvkargs, buffer=10000, **kwargs):

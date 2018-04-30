@@ -13,16 +13,19 @@ import face_recognition
 from PIL import Image
 
 from dolly.db import *
-from dolly.main import *
+from dolly.processing import *
 from dolly.utils import *
 
 
-DIRNAME = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-csv.field_size_limit(sys.maxsize)
+# Default paths
+BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data/production/msceleb/v1/')
+#BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data/tests/')
+database = os.path.join(BASE_DIR, 'db/msceleb.sqlite')
+faces_folder = os.path.join(BASE_DIR, 'images/')
+pickle_folder = os.path.join(BASE_DIR, 'pickle/')
 
-database = '/Users/salvacarrion/Documents/Programming/Python/Projects/dolly/data/production/msceleb/v1/db/msceleb.sqlite'
-faces_folder = '/Users/salvacarrion/Documents/Programming/Python/Projects/dolly/data/production/msceleb/v1/images/'
-pickle_folder = '/Users/salvacarrion/Documents/Programming/Python/Projects/dolly/data/production/msceleb/v1/pickle/'
+# Set maximun field size (for huge files)
+csv.field_size_limit(sys.maxsize)
 
 
 def _save_matrix():

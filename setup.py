@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
 
-NAME = 'Dolly'
-VERSION = '0.1'
+NAME = 'dolly'
+VERSION = '0.2.1'
 DESCRIPTION = 'Dolly is a simple face detection to find your clones!'
 AUTHOR = 'Salva Carrión'
 AUTHOR_EMAIL = ''
@@ -12,7 +12,7 @@ DOWNLOAD_URL = "https://github.com/salvacarrion/dolly/tarball/{}".format(VERSION
 
 ENTRY_POINTS = {
     'console_scripts': (
-        'dolly = dolly:main',
+        'dolly = dolly.cli:main',
     ),
 }
 
@@ -27,10 +27,6 @@ setup(name=NAME,
       author_email=AUTHOR_EMAIL,
       license=LICENCE,
       packages=find_packages(),
-      package_data={
-          'dictionaries': ['*.sqlite', '*.jpg', '*.png'],
-      },
-      include_package_data=True,
       install_requires=requirements,
       zip_safe=False,
       entry_points=ENTRY_POINTS
