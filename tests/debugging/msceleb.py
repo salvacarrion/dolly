@@ -7,6 +7,7 @@ import glob
 import time
 import csv
 import re
+import pickle
 
 import face_recognition
 from PIL import Image
@@ -16,13 +17,40 @@ from dolly.main import *
 from dolly.utils import *
 
 
-MSCELEB_DIR = '/Users/salvacarrion/Documents/Programming/Python/Projects/dolly/data/faces/msceleb/'
 DIRNAME = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 csv.field_size_limit(sys.maxsize)
 
+database = '/Users/salvacarrion/Documents/Programming/Python/Projects/dolly/data/production/msceleb/v1/db/msceleb.sqlite'
+faces_folder = '/Users/salvacarrion/Documents/Programming/Python/Projects/dolly/data/production/msceleb/v1/images/'
+pickle_folder = '/Users/salvacarrion/Documents/Programming/Python/Projects/dolly/data/production/msceleb/v1/pickle/'
 
-def _save_msceleb_image(freebase_mid, image_id, isr, img, base_dir=MSCELEB_DIR):
-    celeb_folder = os.path.normpath(base_dir + freebase_mid)
+
+def _save_matrix():
+    # Create a database connection
+    conn = create_connection(database)
+    cur = conn.cursor()
+    with conn:
+        #num_faces = cur.execute('SELECT COUNT(*) FROM faces WHERE face_encoding IS NOT NULL;').fetchone()[0]
+
+        ids = []
+        encodings = []
+        # Query faces
+        cur.execute('SELECT id, face_encoding FROM faces WHERE face_encoding IS NOT NULL;')
+        for row in cur:  # Iterator. Doesn't load the whole table
+            ids.append(row[0])
+            encodings.append(convert_array(row[1]))
+            print('- Encoded face #{}'.format(row[0]))
+
+        ids = np.array(ids, dtype=np.int32)
+        encodings = np.vstack(encodings).astype(np.float32)
+
+        pickle.dump(ids, open(pickle_folder + 'np_ids.pkl', 'wb'))
+        pickle.dump(encodings, open(pickle_folder + 'np_encodings.pkl', 'wb'))
+        print('\nDone!')
+
+
+def _save_msceleb_image(freebase_mid, isr, img):
+    celeb_folder = os.path.normpath(faces_folder + freebase_mid)
     img_name = '{}-FaceId-0.jpg'.format(isr)
 
     # Create folder if it doesn't exists
@@ -51,7 +79,7 @@ def _face_parser(row, encode_face, query_type):
         face_location = face_recognition.face_locations(np_image)[0]
         encoding = face_recognition.face_encodings(np_image, [face_location])[0] if encode_face else None
         hard_face = False
-        _save_msceleb_image(freebase_mid=row[2], image_id=row[0], isr=row[3], img=img)
+        _save_msceleb_image(freebase_mid=row[2], isr=row[3], img=img)
     except IndexError as e:  # Face not found with HOG. Try with CNN?
         encoding = None
         hard_face = True
@@ -198,7 +226,6 @@ def _load_faces_db(filename, database, sql, parser, csvkargs, buffer=10000, min_
 
 def _load_faces_msceleb():
     filename = '/Users/salvacarrion/Downloads/TrainData_Base.tsv'
-    database = '/Users/salvacarrion/Documents/Programming/Python/Projects/dolly/data/msceleb.sqlite'
 
     # SQLs
     sql_add = "INSERT INTO faces(image_name, face_location, freebase_mid, face_encoding, image_search_rank, image_url, " \
@@ -214,7 +241,6 @@ def _load_faces_msceleb():
 
 def _load_entities_msceleb():
     filename = '/Users/salvacarrion/Downloads/Top1M_MidList.Name.tsv'
-    database = '/Users/salvacarrion/Documents/Programming/Python/Projects/dolly/data/msceleb.sqlite'
 
     # SQLs
     sql_entities = "INSERT INTO entities(freebase_mid, name_en) VALUES (?, ?);"
@@ -227,6 +253,7 @@ def _load_entities_msceleb():
 if __name__ == '__main__':
     #empty_dir(MSCELEB_DIR)
     start_t = time.time()
+    _save_matrix()
     #_load_faces_msceleb()
     end_t = time.time() - start_t
     print('- Elapsed time: %.5fs' % end_t)

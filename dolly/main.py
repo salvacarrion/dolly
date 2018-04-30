@@ -8,6 +8,8 @@ import shutil
 import glob
 import bisect
 import uuid
+import pickle
+import nmslib
 
 import face_recognition
 import numpy as np
@@ -17,43 +19,12 @@ from googleapiclient.discovery import build
 from dolly.db import *
 from dolly.utils import *
 
-
-def __image_loader(filename_or_np_array):
-    _type = None
-    # Read filename or load np_array
-    if isinstance(filename_or_np_array, str):
-        # Load the image file into a numpy array
-        image = face_recognition.load_image_file(filename_or_np_array)
-        _type = str
-    elif isinstance(filename_or_np_array, np.ndarray):
-        image = filename_or_np_array  # Must be a np_array
-        _type = np.ndarray
-    else:
-        raise TypeError('Invalid image type')
-    return image, _type
-
-
-def crop_image(filename_or_np_array, coords, save_path=None, console=True, **kwargs):
-    # Load image (np_array)
-    image, _type = __image_loader(filename_or_np_array)
-
-    # Load PIL image and crop it
-    (top, right, bottom, left) = coords
-    pil_image = Image.fromarray(image)
-    pil_image = pil_image.crop((left, top, right, bottom))
-
-    # Save image
-    if save_path:
-        pil_image.save(save_path, 'JPEG', quality=100)
-    elif console:  # Display the resulting image
-        pil_image.show()
-
-    return pil_image
+DIRNAME = os.path.dirname(os.path.dirname(__file__))
 
 
 def findfaces(filename_or_np_array, save_path=False, verbose=1, **kwargs):
     # Load image (np_array)
-    image, _type = __image_loader(filename_or_np_array)
+    image, _type = image_loader(filename_or_np_array)
 
     # Get attributes
     face_locations = face_recognition.face_locations(image)
@@ -102,54 +73,9 @@ def findfacesdir(directory, save_path, max_faces=0, **kwargs):
     return num_faces
 
 
-def findclones(filename_or_np_array, top_k=10, database=None, **kwargs):
-    # Load image (np_array)
-    image, _type = __image_loader(filename_or_np_array)
-
-    # Find enconding vector
-    image_encodings = face_recognition.face_encodings(image)
-
-    # Check database source
-    if not database:
-        DIRNAME = os.path.dirname(os.path.dirname(__file__))
-        database = os.path.join(DIRNAME, 'data/msceleb.sqlite')
-
-    # Create a database connection
-    print('Connecting to DB...')
-    conn = create_connection(database)
-    with conn:
-        cur = conn.cursor()
-        cur.execute('SELECT * from faces WHERE face_encoding IS NOT NULL;')
-
-        top_candidates = []  # Max. size 10
-        for row in cur:  # Iterator. Doesn't load the whole table
-            # Compute distance
-            dist = face_recognition.face_distance([convert_array(row[5])], image_encodings[0])[0]
-            t = (dist, row)
-
-            # Add to list
-            if len(top_candidates)>= top_k:
-                if dist < top_candidates[-1][0]:  # Closer than the last element
-                    bisect.insort(top_candidates, t)
-                    top_candidates.pop()  # Remove last element
-
-            else:  # if total < K: Add anyway
-                bisect.insort(top_candidates, t)
-
-        # Print images
-        for c in top_candidates:  # Sorted
-            dist, row = c
-            image_name = row[1] + '_' + str(row[6])
-            entity_name = row[4]
-            values = (entity_name, dist, image_name)
-            print('Name: {};     Distance={};     image_name={}'.format(*values))
-
-        return top_candidates
-
-
 def draw_boxes(filename_or_np_array, save_path=None, console=True, **kwargs):
     # Load image (np_array)
-    image, _type = __image_loader(filename_or_np_array)
+    image, _type = image_loader(filename_or_np_array)
 
     # Find all the faces
     face_locations = face_recognition.face_locations(image)
@@ -195,7 +121,7 @@ def draw_landmarks(filename_or_np_array, save_path=None, console=True, **kwargs)
     ]
 
     # Load image (np_array)
-    image, _type = __image_loader(filename_or_np_array)
+    image, _type = image_loader(filename_or_np_array)
 
     # Find all facial features in all the faces in the image
     face_landmarks_list = face_recognition.face_landmarks(image)
@@ -221,11 +147,12 @@ def draw_landmarks(filename_or_np_array, save_path=None, console=True, **kwargs)
     elif console:  # Display the resulting image
         pil_image.show()
 
-    return image, face_landmarks
+    return image, face_landmarks_list
 
 
-def get_more_info(freebase_mid, api_key):
-    gkg_entity_id = '/' + freebase_mid.replace('.', '/')
+def get_more_info(api_key, freebase=True, **kwargs):
+    if freebase:
+        kwargs['ids'] = '/' + kwargs['ids'].replace('.', '/')
 
     # Build a service object for interacting with the API. Visit
     # the Google APIs Console <http://code.google.com/apis/console>
@@ -234,11 +161,7 @@ def get_more_info(freebase_mid, api_key):
     # GKG API: https://developers.google.com/knowledge-graph/reference/rest/v1/
     # More: https://developers.google.com/resources/api-libraries/documentation/kgsearch/v1/python/latest/kgsearch_v1.entities.html
     service = build('kgsearch', 'v1', developerKey=api_key)
-    return service.entities().search(
-        ids=gkg_entity_id,
-        languages='en',
-        limit=1,
-    ).execute()
+    return service.entities().search(**kwargs).execute()
 
 
 def main():
@@ -250,25 +173,25 @@ def main():
         # Select command
         if arg1 == 'findfaces':
             parser.add_argument('-f', '--filename', help='filename of the image to process',
-                                dest='filename_or_np_array', required='True')
+                                dest='filename_or_np_array', required=True)
             parser.add_argument('-d', '--save_path', help='directory to save the faces found')
             func = findfaces
 
         elif arg1 == 'findfacesdir':
-            parser.add_argument('-d', '--directory', help='directory to search for faces', required='True')
-            parser.add_argument('-d2', '--save_path', help='directory to save the faces found', required='True')
+            parser.add_argument('-d', '--directory', help='directory to search for faces', required=True)
+            parser.add_argument('-d2', '--save_path', help='directory to save the faces found', required=True)
             parser.add_argument('-m', '--max_faces', help='maximum number of faces to save', type=int, default=0)
             func = findfacesdir
 
         elif arg1 == 'draw_boxes':
             parser.add_argument('-f', '--filename', help='filename of the image to process',
-                                dest='filename_or_np_array', required='True')
+                                dest='filename_or_np_array', required=True)
             parser.add_argument('-s', '--save_path', help='directory to save the faces found')
             func = draw_boxes
 
         elif arg1 == 'draw_landmarks':
             parser.add_argument('-f', '--filename', help='filename of the image to process',
-                                dest='filename_or_np_array', required='True')
+                                dest='filename_or_np_array', required=True)
             parser.add_argument('-s', '--save_path', help='directory to save the faces found')
             func = draw_landmarks
 
@@ -285,5 +208,13 @@ def main():
 
 
 if __name__ == '__main__':
+    from dolly.findclones import Finder
+    filename = '/Users/salvacarrion/Desktop/obama.jpg'
+
+    f = Finder(in_memory=True)
+    f_enc = f.analyze_face(filename)[2]
+    res = f.findclones(face_encoding=f_enc, top_k=10)
+    f.print_results(res)
+    asd = 23
     #draw_landmarks('/Users/salvacarrion/Desktop/Unknown.jpeg')
-    main()
+    #main()
