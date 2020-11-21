@@ -4,6 +4,8 @@ Additionally, you can use it to detect faces, crop them, draw boxes, landmarks,.
 
 This project is based on [dlib](http://dlib.net) and [face_recognition](https://github.com/ageitgey/face_recognition)
 
+![Demo image](docs/images/demo.jpg)
+
 ## Installation
 
 ### Requirements
