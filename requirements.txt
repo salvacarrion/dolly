@@ -1,5 +1,5 @@
 face_recognition==1.2.2
-Pillow==7.1.0
+Pillow==8.3.2
 numpy==1.14.1
 nmslib==1.7.2
 google-api-python-client==1.6.7
